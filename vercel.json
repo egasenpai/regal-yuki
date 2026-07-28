@@ -1,0 +1,13 @@
+{
+  "rewrites": [
+    { "source": "/api/upload", "destination": "/api/upload.js" },
+    {
+      "source": "/:filename.jpg",
+      "destination": "https://raw.githubusercontent.com/regalsenpaii/Yukii-store/main/:filename.jpg"
+    },
+    {
+      "source": "/:filename.png",
+      "destination": "https://raw.githubusercontent.com/regalsenpaii/Yukii-store/main/:filename.png"
+    }
+  ]
+}
