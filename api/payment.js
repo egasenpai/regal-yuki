@@ -113,11 +113,11 @@ export default async function handler(req, res) {
       });
     }
 
-    const d = austinData.data || austinData;
-    const austinTxId = d.transactionId || d.id || d.reference || referenceId;
-    const qrImage = d.qrImage || d.qr_image || d.qrUrl || d.qr_url || d.qrCode || d.qr_code || null;
-    const qrString = d.qrString || d.qr_string || d.qrCode || d.qr_code || null;
-    const expiredAt = d.expiredAt || d.expired_at || d.expiresAt || d.expires_at || null;
+    const d = austinData.deposit || austinData.data || austinData;
+    const austinTxId = d.transaction_id || d.transactionId || d.id || d.reference || referenceId;
+    const qrImage = d.qr_image || d.qrImage || d.qrUrl || d.qr_url || d.qrCode || d.qr_code || null;
+    const qrString = d.qr_string || d.qrString || d.qrCode || d.qr_code || null;
+    const expiredAt = d.expired_at || d.expiredAt || d.expiresAt || d.expires_at || null;
 
     const { readJsonFile, writeJsonFile } = await import("./_lib/github-store.js");
     const { content, sha } = await readJsonFile("transactions/pending.json");
