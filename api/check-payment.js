@@ -4,9 +4,10 @@
  */
 
 import { findTransaction } from "./_lib/github-store.js";
-import { austinFetch } from "./_lib/austin-fetch.js";
+import { austinFetchSigned } from "./_lib/austin-fetch.js";
 
-const AUSTIN_API_KEY = "aps_d9d7bcae8c56a0cb4727312ddc2e62ebcb2b54cdd613f252d020eeed42123727";
+const AUSTIN_API_KEY = process.env.AUSTIN_API_KEY || "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";
+const AUSTIN_API_SECRET = process.env.AUSTIN_API_SECRET || "aps_d9d7bcae8c56a0cb4727312ddc2e62ebcb2b54cdd613f252d020eeed42123727";
 const AUSTIN_BASE_URL = "https://austinstore.id";
 
 export default async function handler(req, res) {
@@ -25,8 +26,13 @@ export default async function handler(req, res) {
   let austinStatus = null;
   if (txn.status === "pending" && txn.austinTxId) {
     try {
-      const checkRes = await austinFetch(
-        `${AUSTIN_BASE_URL}/api/v2/deposit/check/${txn.austinTxId}?apikey=${AUSTIN_API_KEY}`
+      const checkPath = `/api/v2/deposit/check/${txn.austinTxId}`;
+      const checkRes = await austinFetchSigned(
+        AUSTIN_BASE_URL,
+        checkPath,
+        { method: "GET" },
+        AUSTIN_API_KEY,
+        AUSTIN_API_SECRET
       );
       if (checkRes.ok) {
         const checkData = await checkRes.json();
