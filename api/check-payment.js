@@ -6,8 +6,8 @@
 import { findTransaction } from "./_lib/github-store.js";
 import { austinFetchSigned } from "./_lib/austin-fetch.js";
 
-const AUSTIN_API_KEY = process.env.AUSTIN_API_KEY || "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";
-const AUSTIN_API_SECRET = process.env.AUSTIN_API_SECRET || "aps_d9d7bcae8c56a0cb4727312ddc2e62ebcb2b54cdd613f252d020eeed42123727";
+const AUSTIN_API_KEY = process.env.AUSTIN_API_KEY || "apg_live_7b2866c45bfe752cc6a51a5c719087e121bf26430377ce46";
+const AUSTIN_API_SECRET = process.env.AUSTIN_API_SECRET || "aps_e6608c544e87055c9568e77da4aa556083860e23860c6e5b7e02c4581b56b6c0";
 const AUSTIN_BASE_URL = "https://austinstore.id";
 
 export default async function handler(req, res) {
