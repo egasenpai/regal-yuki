@@ -4,6 +4,7 @@
  */
 
 import { findTransaction } from "./_lib/github-store.js";
+import { austinFetch } from "./_lib/austin-fetch.js";
 
 const AUSTIN_API_KEY = "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";
 const AUSTIN_BASE_URL = "https://austinstore.id";
@@ -24,8 +25,8 @@ export default async function handler(req, res) {
   let austinStatus = null;
   if (txn.status === "pending" && txn.austinTxId) {
     try {
-      const checkRes = await fetch(
-        `${AUSTIN_BASE_URL}/api/v1/deposit/check/${txn.austinTxId}?apikey=${AUSTIN_API_KEY}`
+      const checkRes = await austinFetch(
+        `${AUSTIN_BASE_URL}/api/v2/deposit/check/${txn.austinTxId}?apikey=${AUSTIN_API_KEY}`
       );
       if (checkRes.ok) {
         const checkData = await checkRes.json();
