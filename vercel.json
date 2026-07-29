@@ -1,6 +1,16 @@
 {
   "rewrites": [
     { "source": "/api/upload", "destination": "/api/upload.js" },
+    { "source": "/api/products", "destination": "/api/products.js" },
+    { "source": "/api/config", "destination": "/api/config.js" },
+    { "source": "/api/admin/login", "destination": "/api/admin/login.js" },
+    { "source": "/api/admin/verify", "destination": "/api/admin/verify.js" },
+    { "source": "/api/admin/products", "destination": "/api/admin/products.js" },
+    { "source": "/api/admin/transactions", "destination": "/api/admin/transactions.js" },
+    { "source": "/api/admin/users", "destination": "/api/admin/users.js" },
+    { "source": "/api/admin/check-username", "destination": "/api/admin/check-username.js" },
+    { "source": "/api/admin/config", "destination": "/api/admin/config.js" },
+    { "source": "/api/admin/server-status", "destination": "/api/admin/server-status.js" },
     {
       "source": "/:filename.jpg",
       "destination": "https://raw.githubusercontent.com/regalsenpaii/Yukii-store/main/:filename.jpg"
@@ -11,4 +21,3 @@
     }
   ]
 }
-
