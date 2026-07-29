@@ -64,60 +64,6 @@ function formatRupiah(price) {
     return 'Rp ' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-async function checkMaintenance() {
-    try {
-        const res = await fetch('/api/config');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.maintenanceMode) {
-                document.body.innerHTML = `
-                    <div class="fixed inset-0 bg-slate-900 flex items-center justify-center z-[99999]">
-                        <div class="text-center px-6">
-                            <div class="w-20 h-20 rounded-2xl bg-amber-500/10 flex items-center justify-center mx-auto mb-6">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
-                            </div>
-                            <h1 class="text-2xl font-bold text-white mb-2">Maintenance Mode</h1>
-                            <p class="text-slate-400 max-w-md">${data.maintenanceMessage || 'Sedang maintenance, silakan kembali lagi nanti.'}</p>
-                        </div>
-                    </div>
-                `;
-                return true;
-            }
-        }
-    } catch (e) { console.log('Maintenance check failed:', e.message); }
-    return false;
-}
-
-async function fetchProducts() {
-    try {
-        const res = await fetch('/api/products');
-        if (res.ok) {
-            const data = await res.json();
-            if (data.products && data.products.length > 0) {
-                panelProducts = data.products;
-                return; // Sukses, langsung return
-            }
-        }
-        console.log('[Products] API not ready or empty, using fallback');
-    } catch (e) {
-        console.error('[Products] Fetch failed:', e.message);
-    }
-    // Fallback: selalu pakai data hardcoded kalau API gagal
-    panelProducts = [
-        { id: 1, name: 'Panel 1GB', price: 2000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '1GB' },
-        { id: 2, name: 'Panel 2GB', price: 3000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '2GB' },
-        { id: 3, name: 'Panel 3GB', price: 4000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '3GB' },
-        { id: 4, name: 'Panel 4GB', price: 5000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '4GB' },
-        { id: 5, name: 'Panel 5GB', price: 6000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '5GB' },
-        { id: 6, name: 'Panel 6GB', price: 7000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '6GB' },
-        { id: 7, name: 'Panel 7GB', price: 8000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '7GB' },
-        { id: 8, name: 'Panel 8GB', price: 9000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '8GB' },
-        { id: 9, name: 'Panel 9GB', price: 10000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '9GB' },
-        { id: 10, name: 'Panel 10GB', price: 11000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '10GB' },
-        { id: 11, name: 'Panel UNLIMITED', price: 25000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: 'UNLIMITED' },
-    ];
-}
-
 function formatDuration(ms) {
     if (!ms || ms <= 0) return '0:00';
     const s = Math.floor(ms / 1000);
@@ -1308,10 +1254,7 @@ function initKeyboard() {
     });
 }
 
-document.addEventListener('DOMContentLoaded', async () => {
-    const isMaintenance = await checkMaintenance();
-    if (isMaintenance) return;
-    await fetchProducts();
+document.addEventListener('DOMContentLoaded', () => {
     injectStyles();
     initIcons();
     initSidebar();
