@@ -6,6 +6,7 @@
  */
 
 import { appendTransaction } from "./_lib/github-store.js";
+import { austinFetch } from "./_lib/austin-fetch.js";
 
 const AUSTIN_API_KEY = "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";
 const AUSTIN_BASE_URL = "https://austinstore.id";
@@ -49,7 +50,7 @@ export default async function handler(req, res) {
     await appendTransaction(txn);
     console.log("[Payment] Transaction saved:", referenceId);
 
-    const endpoint = `${AUSTIN_BASE_URL}/api/v1/deposit/create?apikey=${AUSTIN_API_KEY}`;
+    const endpoint = `${AUSTIN_BASE_URL}/api/v2/deposit/create?apikey=${AUSTIN_API_KEY}`;
     console.log("[Payment] Calling Austin Pay:", endpoint);
 
     const requestBody = {
@@ -64,7 +65,7 @@ export default async function handler(req, res) {
       description: `Pembelian ${productName} - ${buyerName}`
     };
 
-    const austinRes = await fetch(endpoint, {
+    const austinRes = await austinFetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -109,7 +110,6 @@ export default async function handler(req, res) {
     const qrString = d.qrString || d.qr_string || d.qrCode || d.qr_code || null;
     const expiredAt = d.expiredAt || d.expired_at || d.expiresAt || d.expires_at || null;
 
-    // Update transaction dengan austinTxId
     const { readJsonFile, writeJsonFile } = await import("./_lib/github-store.js");
     const { content, sha } = await readJsonFile("transactions/pending.json");
     if (content) {
@@ -127,7 +127,7 @@ export default async function handler(req, res) {
       qrImage,
       qrString,
       amount: price,
-      expiredAt: expiredAt || new Date(Date.now() + 15 * 60 * 1000).toISOString()
+      expiredAt: expiredAt || new Date(Date.now() + 10 * 60 * 1000).toISOString()
     });
 
   } catch (error) {
