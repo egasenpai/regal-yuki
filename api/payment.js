@@ -6,9 +6,10 @@
  */
 
 import { appendTransaction } from "./_lib/github-store.js";
-import { austinFetch } from "./_lib/austin-fetch.js";
+import { austinFetchSigned } from "./_lib/austin-fetch.js";
 
-const AUSTIN_API_KEY = "aps_d9d7bcae8c56a0cb4727312ddc2e62ebcb2b54cdd613f252d020eeed42123727";
+const AUSTIN_API_KEY = "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";.
+const AUSTIN_API_SECRET = "aps_d9d7bcae8c56a0cb4727312ddc2e62ebcb2b54cdd613f252d020eeed42123727";
 const AUSTIN_BASE_URL = "https://austinstore.id";
 
 const WEBHOOK_URL = process.env.VERCEL_URL
@@ -50,8 +51,8 @@ export default async function handler(req, res) {
     await appendTransaction(txn);
     console.log("[Payment] Transaction saved:", referenceId);
 
-    const endpoint = `${AUSTIN_BASE_URL}/api/v2/deposit/create?apikey=${AUSTIN_API_KEY}`;
-    console.log("[Payment] Calling Austin Pay:", endpoint);
+    const path = "/api/v2/deposit/create";
+    console.log("[Payment] Calling Austin Pay:", `${AUSTIN_BASE_URL}${path}`);
 
     const requestBody = {
       amount: parseInt(price),
@@ -64,14 +65,18 @@ export default async function handler(req, res) {
       return_url: `https://yukii-store.vercel.app/?payment=success&ref=${referenceId}`,
       description: `Pembelian ${productName} - ${buyerName}`
     };
-
-    const austinRes = await austinFetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
+    const requestBodyStr = JSON.stringify(requestBody);
+    const austinRes = await austinFetchSigned(
+      AUSTIN_BASE_URL,
+      path,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: requestBodyStr
       },
-      body: JSON.stringify(requestBody)
-    });
+      AUSTIN_API_KEY,
+      AUSTIN_API_SECRET
+    );
 
     const responseText = await austinRes.text();
     console.log(`[Payment] Austin Pay response ${austinRes.status}:`, responseText.substring(0, 1000));
