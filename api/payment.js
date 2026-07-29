@@ -8,7 +8,7 @@
 import { appendTransaction } from "./_lib/github-store.js";
 import { austinFetch } from "./_lib/austin-fetch.js";
 
-const AUSTIN_API_KEY = "apg_live_2a4243de5dc357129aad98cf1f97fead774cf0c58af91a2f";
+const AUSTIN_API_KEY = "apg_live_7b2866c45bfe752cc6a51a5c719087e121bf26430377ce46";
 const AUSTIN_BASE_URL = "https://austinstore.id";
 
 const WEBHOOK_URL = process.env.VERCEL_URL
