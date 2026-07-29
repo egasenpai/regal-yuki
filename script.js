@@ -93,25 +93,29 @@ async function fetchProducts() {
         const res = await fetch('/api/products');
         if (res.ok) {
             const data = await res.json();
-            panelProducts = data.products || [];
+            if (data.products && data.products.length > 0) {
+                panelProducts = data.products;
+                return; // Sukses, langsung return
+            }
         }
+        console.log('[Products] API not ready or empty, using fallback');
     } catch (e) {
-        console.error('Fetch products failed:', e);
-        // fallback hardcoded
-        panelProducts = [
-            { id: 1, name: 'Panel 1GB', price: 2000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '1GB' },
-            { id: 2, name: 'Panel 2GB', price: 3000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '2GB' },
-            { id: 3, name: 'Panel 3GB', price: 4000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '3GB' },
-            { id: 4, name: 'Panel 4GB', price: 5000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '4GB' },
-            { id: 5, name: 'Panel 5GB', price: 6000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '5GB' },
-            { id: 6, name: 'Panel 6GB', price: 7000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '6GB' },
-            { id: 7, name: 'Panel 7GB', price: 8000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '7GB' },
-            { id: 8, name: 'Panel 8GB', price: 9000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '8GB' },
-            { id: 9, name: 'Panel 9GB', price: 10000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '9GB' },
-            { id: 10, name: 'Panel 10GB', price: 11000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '10GB' },
-            { id: 11, name: 'Panel UNLIMITED', price: 25000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: 'UNLIMITED' },
-        ];
+        console.error('[Products] Fetch failed:', e.message);
     }
+    // Fallback: selalu pakai data hardcoded kalau API gagal
+    panelProducts = [
+        { id: 1, name: 'Panel 1GB', price: 2000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '1GB' },
+        { id: 2, name: 'Panel 2GB', price: 3000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '2GB' },
+        { id: 3, name: 'Panel 3GB', price: 4000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '3GB' },
+        { id: 4, name: 'Panel 4GB', price: 5000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '4GB' },
+        { id: 5, name: 'Panel 5GB', price: 6000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '5GB' },
+        { id: 6, name: 'Panel 6GB', price: 7000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '6GB' },
+        { id: 7, name: 'Panel 7GB', price: 8000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '7GB' },
+        { id: 8, name: 'Panel 8GB', price: 9000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '8GB' },
+        { id: 9, name: 'Panel 9GB', price: 10000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '9GB' },
+        { id: 10, name: 'Panel 10GB', price: 11000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '10GB' },
+        { id: 11, name: 'Panel UNLIMITED', price: 25000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: 'UNLIMITED' },
+    ];
 }
 
 function formatDuration(ms) {
