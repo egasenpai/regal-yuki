@@ -45,6 +45,7 @@ let currentModalProduct = { name: '', price: 0 };
 let currentPanelProduct = { name: '', price: 0 };
 let paymentCheckInterval = null;
 let countdownInterval = null;
+let currentReferenceId = null;
 let isPlaying = false;
 let currentPage = 'dashboard';
 let currentAudioUrl = '';
@@ -527,6 +528,7 @@ function startCountdown(minutes) {
 }
 
 function startPaymentPolling(referenceId) {
+    currentReferenceId = referenceId;
     const MAX_ATTEMPTS = 120;
     let attempts = 0;
 
@@ -543,11 +545,17 @@ function startPaymentPolling(referenceId) {
             }
 
             const data = await res.json();
+            
+            // Sembunyikan warning kalau status berubah
+            const warningEl = document.getElementById('ap-warning');
+            if (warningEl) warningEl.classList.add('hidden');
+
             if (data.status === 'completed') {
                 clearInterval(paymentCheckInterval);
                 clearInterval(countdownInterval);
                 document.getElementById('ap-success').classList.remove('hidden');
-                showToast('Sukses', 'Pembayaran berhasil! Server sedang dibuat.', 'success');
+                if (data.serverInfo) renderPanelDetails(data.serverInfo);
+                showToast('Sukses', 'Pembayaran berhasil! Data panel sudah tersedia.', 'success');
             } else if (data.status === 'failed') {
                 clearInterval(paymentCheckInterval);
                 showToast('Gagal', 'Terjadi kesalahan saat membuat server.', 'error');
@@ -564,6 +572,95 @@ function startPaymentPolling(referenceId) {
         }
     }, 5000);
 }
+
+async function manualCheckPayment() {
+    if (!currentReferenceId) {
+        showToast('Error', 'Reference ID tidak ditemukan. Silakan generate QRIS ulang.', 'error');
+        return;
+    }
+
+    const btn = document.getElementById('ap-check-btn');
+    const warningEl = document.getElementById('ap-warning');
+    const originalHTML = btn.innerHTML;
+    
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Mengecek pembayaran...';
+    if (warningEl) warningEl.classList.add('hidden');
+
+    try {
+        const res = await fetch(`/api/check-payment?ref=${currentReferenceId}`);
+        
+        if (res.status === 404) {
+            showToast('Gagal', 'Transaksi tidak ditemukan.', 'error');
+            return;
+        }
+
+        const data = await res.json();
+
+        // Case 1: Sudah completed di store + server sudah dibuat
+        if (data.status === 'completed') {
+            clearInterval(paymentCheckInterval);
+            clearInterval(countdownInterval);
+            document.getElementById('ap-success').classList.remove('hidden');
+            if (data.serverInfo) renderPanelDetails(data.serverInfo);
+            showToast('Sukses', 'Pembayaran berhasil! Data panel sudah tersedia.', 'success');
+            return;
+        }
+
+        // Case 2: Status pending tapi Austin Pay sudah terima pembayaran (webhook belum datang)
+        const paidStatuses = ['paid', 'completed', 'success', 'settlement'];
+        const isPaidOnAustin = data.austinStatus && paidStatuses.includes(data.austinStatus.toLowerCase());
+        
+        if (data.status === 'pending' && isPaidOnAustin) {
+            showToast('Info', 'Pembayaran sudah kami terima! Server sedang diproses, mohon tunggu sebentar...', 'success');
+            return;
+        }
+
+        // Case 3: Processing (server sedang dibuat)
+        if (data.status === 'processing') {
+            showToast('Info', 'Pembayaran diterima, server sedang dibuat. Mohon tunggu...', 'success');
+            return;
+        }
+
+        // Case 4: Belum bayar → tampilkan peringatan
+        if (warningEl) warningEl.classList.remove('hidden');
+        showToast('Peringatan', 'Pembayaran belum diterima. Silakan scan QRIS dan selesaikan pembayaran terlebih dahulu.', 'error');
+
+    } catch (e) {
+        console.error('Manual check error:', e);
+        showToast('Error', 'Gagal mengecek status pembayaran. Coba lagi.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+    }
+}
+
+function renderPanelDetails(info) {
+    const container = document.getElementById('ap-panel-details');
+    if (!container || !info) return;
+    
+    const urlEl = document.getElementById('apd-url');
+    if (urlEl) {
+        urlEl.href = info.panelUrl || '#';
+        urlEl.textContent = info.panelUrl || '-';
+    }
+    const userEl = document.getElementById('apd-user');
+    if (userEl) userEl.textContent = info.username || '-';
+    
+    const passEl = document.getElementById('apd-pass');
+    if (passEl) passEl.textContent = info.password || '-';
+    
+    const idEl = document.getElementById('apd-id');
+    if (idEl) idEl.textContent = info.serverId || '-';
+    
+    container.classList.remove('hidden');
+    
+    // Scroll ke detail panel
+    setTimeout(() => {
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+}
+
 
 function initAutoPaymentForm() {
     const form = document.getElementById('auto-payment-form');
