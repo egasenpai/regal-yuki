@@ -2,7 +2,6 @@
   "rewrites": [
     { "source": "/api/upload", "destination": "/api/upload.js" },
     { "source": "/api/admin/:path*", "destination": "/api/admin/:path*.js" },
-    { "source": "/admin/:path*", "destination": "/admin/:path*" },
     {
       "source": "/:filename.jpg",
       "destination": "https://raw.githubusercontent.com/egasenpai/regal-yuki/main/:filename.jpg"
