@@ -43,12 +43,16 @@ export default async function handler(req, res) {
     }
   }
 
-  return res.status(200).json({
+    return res.status(200).json({
     success: true,
     status: txn.status,
     austinStatus,
     productName: txn.productName,
     price: txn.price,
+    buyerName: txn.buyerName,
+    buyerWa: txn.buyerWa,
+    panelUsername: txn.panelUsername,
+    panelEmail: txn.panelEmail,
     serverInfo: txn.serverInfo || null
   });
 }
