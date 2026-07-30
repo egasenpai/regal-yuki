@@ -1,14 +1,42 @@
 {
+  "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
   "rewrites": [
-    { "source": "/api/upload", "destination": "/api/upload.js" },
-    { "source": "/api/admin/:path*", "destination": "/api/admin/:path*.js" },
     {
-      "source": "/:filename.jpg",
-      "destination": "https://raw.githubusercontent.com/egasenpai/regal-yuki/main/:filename.jpg"
+      "source": "/admin",
+      "destination": "/admin/index.html"
     },
     {
-      "source": "/:filename.png",
-      "destination": "https://raw.githubusercontent.com/egasenpai/regal-yuki/main/:filename.png"
+      "source": "/admin/:path*",
+      "destination": "/admin/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    },
+    {
+      "source": "/((?!admin/|api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
     }
   ]
 }
