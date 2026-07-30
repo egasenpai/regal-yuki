@@ -26,18 +26,38 @@ const IC_DISC = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" 
 const IC_EXTERNAL = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>`;
 
 // --- 3. DATA PRODUCTS ---
-const panelProducts = [
-    { id: 1, name: 'Panel 1GB', price: 2000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '1GB' },
-    { id: 2, name: 'Panel 2GB', price: 3000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '2GB' },
-    { id: 3, name: 'Panel 3GB', price: 4000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '3GB' },
-    { id: 4, name: 'Panel 4GB', price: 5000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '4GB' },
-    { id: 5, name: 'Panel 5GB', price: 6000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '5GB' },
-    { id: 6, name: 'Panel 6GB', price: 7000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '6GB' },
-    { id: 7, name: 'Panel 7GB', price: 8000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '7GB' },
-    { id: 8, name: 'Panel 8GB', price: 9000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '8GB' },
-    { id: 9, name: 'Panel 9GB', price: 10000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '9GB' },
-    { id: 10, name: 'Panel 10GB', price: 11000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: '10GB' },
-    { id: 11, name: 'Panel UNLIMITED', price: 25000, specs: 'VPS R18 C4 \u2022 Aktif 30 Hari', ram: 'UNLIMITED' },
+let panelProducts = [];
+let storeOpen = true;
+
+async function fetchProducts() {
+    try {
+        const res = await fetch('/api/admin-products');
+        const data = await res.json();
+        if (data.success) {
+            storeOpen = data.storeOpen;
+            panelProducts = data.products || [];
+            return true;
+        }
+    } catch (e) {
+        console.log('Failed to fetch products, using fallback:', e.message);
+    }
+    // Fallback to hardcoded
+    storeOpen = true;
+    panelProducts = [
+        { id: 1, name: 'Panel 1GB', price: 2000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '1GB' },
+        { id: 2, name: 'Panel 2GB', price: 3000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '2GB' },
+        { id: 3, name: 'Panel 3GB', price: 4000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '3GB' },
+        { id: 4, name: 'Panel 4GB', price: 5000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '4GB' },
+        { id: 5, name: 'Panel 5GB', price: 6000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '5GB' },
+        { id: 6, name: 'Panel 6GB', price: 7000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '6GB' },
+        { id: 7, name: 'Panel 7GB', price: 8000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '7GB' },
+        { id: 8, name: 'Panel 8GB', price: 9000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '8GB' },
+        { id: 9, name: 'Panel 9GB', price: 10000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '9GB' },
+        { id: 10, name: 'Panel 10GB', price: 11000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: '10GB' },
+        { id: 11, name: 'Panel UNLIMITED', price: 25000, specs: 'VPS R18 C4 • Aktif 30 Hari', ram: 'UNLIMITED' },
+    ];
+    return false;
+}
 ];
 
 // --- 4. GLOBAL APP STATES ---
@@ -345,9 +365,24 @@ function initNavigation() {
 }
 
 // --- 8. PRODUCT RENDERING & CARD ACTIONS ---
-function renderPanelProducts() {
+async function renderPanelProducts() {
+    await fetchProducts();
     const grid = document.getElementById('panel-grid');
     if (!grid) return;
+
+    if (!storeOpen) {
+        grid.innerHTML = `
+            <div class="col-span-full glass-card p-12 text-center">
+                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-400"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                </div>
+                <h3 class="font-bold text-slate-600 text-lg">Toko Sedang Tutup</h3>
+                <p class="text-sm text-slate-400 mt-1">Silakan kembali lagi nanti ya kak! 🙏</p>
+            </div>
+        `;
+        return;
+    }
+
     grid.innerHTML = panelProducts.map(product => {
         const isPopular = product.ram === 'UNLIMITED' || product.ram === '10GB';
         return `
@@ -568,6 +603,29 @@ function startPaymentPolling(referenceId) {
 function initAutoPaymentForm() {
     const form = document.getElementById('auto-payment-form');
     if (!form) return;
+
+    // Add username validation on blur
+    const usernameInput = document.getElementById('ap-username');
+    if (usernameInput) {
+        usernameInput.addEventListener('blur', async () => {
+            const username = usernameInput.value.trim();
+            if (!username) return;
+
+            usernameInput.classList.remove('border-red-300', 'border-emerald-300');
+
+            try {
+                const res = await fetch(`/api/admin?action=check-username&username=${encodeURIComponent(username)}`);
+                const data = await res.json();
+                if (data.exists) {
+                    usernameInput.classList.add('border-red-300');
+                    showToast('Peringatan', `Username "${username}" sudah terdaftar. Silakan ganti username lain.`, 'error');
+                } else {
+                    usernameInput.classList.add('border-emerald-300');
+                }
+            } catch (e) {}
+        });
+    }
+
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const btn = document.getElementById('ap-submit-btn');
@@ -575,12 +633,26 @@ function initAutoPaymentForm() {
         btn.disabled = true;
         btn.innerHTML = '⏳ Memproses...';
 
+        const username = document.getElementById('ap-username').value.trim();
+
+        // Double check username before submitting
+        try {
+            const checkRes = await fetch(`/api/admin?action=check-username&username=${encodeURIComponent(username)}`);
+            const checkData = await checkRes.json();
+            if (checkData.exists) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                showToast('Gagal', `Username "${username}" sudah terdaftar di panel. Silakan gunakan username lain.`, 'error');
+                return;
+            }
+        } catch (e) {}
+
         const payload = {
             productName: currentPanelProduct.name,
             price: currentPanelProduct.price,
             buyerName: document.getElementById('ap-name').value.trim(),
             buyerWa: document.getElementById('ap-wa').value.trim(),
-            panelUsername: document.getElementById('ap-username').value.trim(),
+            panelUsername: username,
             panelEmail: document.getElementById('ap-email').value.trim()
         };
 
@@ -591,7 +663,12 @@ function initAutoPaymentForm() {
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            if (!data.success) throw new Error(data.detail || data.error || 'Gagal membuat pembayaran');
+            if (!data.success) {
+                if (data.duplicate) {
+                    throw new Error(data.error || 'Username sudah terdaftar');
+                }
+                throw new Error(data.detail || data.error || 'Gagal membuat pembayaran');
+            }
 
             document.getElementById('panel-payment-form').classList.add('hidden');
             document.getElementById('panel-qris-display').classList.remove('hidden');
