@@ -1,7 +1,6 @@
 /**
  * API: Webhook Callback dari Austin Pay
  * Event: deposit.paid
- * Format exact dari docs Austin Pay
  */
 
 import crypto from "crypto";
@@ -11,13 +10,6 @@ import { createServer } from "./_lib/pterodactyl.js";
 const ADMIN_WA = "6288246387665";
 const WEBHOOK_SECRET = process.env.AUSTINPAY_WEBHOOK_SECRET || "";
 
-// [FIX] Matiin body parsing otomatis Vercel — kita butuh BYTE MENTAH persis
-// yang dikirim AustinPay buat verifikasi signature. Sebelumnya kode ini
-// pakai JSON.stringify(req.body) (hasil parse ulang), yang TIDAK dijamin
-// identik byte-per-byte dengan JSON asli dari AustinPay (urutan key, spasi,
-// format angka bisa beda) — jadi signature verification bisa gagal terus
-// walau webhook-nya sah, atau (lebih parah) gak sengaja "gagal aman" ke
-// mode skip verifikasi kalau WEBHOOK_SECRET/signature kosong.
 export const config = {
   api: {
     bodyParser: false,
@@ -46,8 +38,6 @@ export default async function handler(req, res) {
 
     console.log("[Webhook] Headers:", { "x-austinpay-event": eventHeader, "x-austinpay-signature": signature ? "present" : "missing" });
 
-    // [FIX] rawBody sekarang BYTE ASLI dari request, bukan hasil
-    // JSON.stringify ulang — ini yang dipakai buat hitung ulang signature.
     const rawBody = await readRawBody(req);
 
     let body;
@@ -58,6 +48,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "Invalid JSON body" });
     }
 
+    // Verifikasi signature kalau secret tersedia
     if (WEBHOOK_SECRET && signature) {
       const expected = crypto
         .createHmac("sha256", WEBHOOK_SECRET)
@@ -76,7 +67,7 @@ export default async function handler(req, res) {
         console.log("[Webhook] Signature valid ✓");
       } catch (sigErr) {
         console.error("[Webhook] Signature comparison error:", sigErr.message);
-        if (WEBHOOK_SECRET) return res.status(401).json({ error: "Signature verification failed" });
+        return res.status(401).json({ error: "Signature verification failed" });
       }
     } else {
       console.log("[Webhook] Skipping signature verification (no secret or no signature)");
@@ -84,22 +75,29 @@ export default async function handler(req, res) {
 
     console.log("[Webhook] Raw body:", JSON.stringify(body, null, 2));
 
-    const event = body.event || eventHeader || "unknown";
-    const d = body.data || {};
+    const event = (body.event || eventHeader || "unknown").toString().toLowerCase();
+    const d = body.data || body || {};
 
-    const transactionId = d.transactionId || d.id || d.reference || body.transactionId;
+    // [FIX] Cek BANYAK kemungkinan field ID dari Austin Pay
+    const transactionId = d.transactionId || d.id || d.reference || d.merchant_ref || d.merchantRef || d.ref_id || d.refId || body.transactionId || body.merchant_ref || body.reference;
+
     const status = d.status || body.status || "unknown";
     const amount = d.amount || body.amount || 0;
     const paidAt = d.paidAt || d.paid_at || body.paidAt;
 
     console.log(`[Webhook] Event=${event}, TX=${transactionId}, status=${status}, amount=${amount}`);
 
-    if (event !== "deposit.paid") {
-      console.log(`[Webhook] Event '${event}' bukan deposit.paid. Diabaikan.`);
+    // [FIX] Proses kalau event deposit.paid ATAU status-nya paid/completed
+    const isPaidEvent = event === "deposit.paid" || event === "deposit_paid";
+    const isPaidStatus = status === "paid" || status === "completed" || status === "success" || status === "settlement";
+
+    if (!isPaidEvent && !isPaidStatus) {
+      console.log(`[Webhook] Event '${event}' / status '${status}' bukan pembayaran. Diabaikan.`);
       return res.status(200).json({ message: `Event '${event}' ignored` });
     }
 
     if (!transactionId) {
+      console.error("[Webhook] Tidak ada transactionId di payload:", JSON.stringify(body));
       return res.status(400).json({ error: "No transactionId found in webhook body", received: body });
     }
 
@@ -109,10 +107,13 @@ export default async function handler(req, res) {
       return res.status(404).json({ error: "Transaction not found", txId: transactionId });
     }
 
+    console.log(`[Webhook] Transaksi ditemukan: ${txn.referenceId}, status lokal: ${txn.status}`);
+
     if (txn.status === "completed") {
       return res.status(200).json({ message: "Already processed" });
     }
 
+    // Update ke processing dulu
     await updateTransactionStatus(txn.referenceId, "processing", { paidAt, austinAmount: amount });
 
     let serverInfo;
@@ -176,7 +177,7 @@ async function notifyAdmin(txn, serverInfo, errorMsg = null) {
 
   const encoded = encodeURIComponent(text);
   try {
-    await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=YOUR_CALLMEBOT_KEY`, { timeout: 5000 });
+    await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=YOUR_CALLMEBOT_KEY`);
   } catch (e) {
     console.log("[Notify Admin] WA send failed:", e.message);
   }
@@ -195,7 +196,7 @@ async function notifyUser(txn, serverInfo) {
 
   const encoded = encodeURIComponent(text);
   try {
-    await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=YOUR_CALLMEBOT_KEY`, { timeout: 5000 });
+    await fetch(`https://api.callmebot.com/whatsapp.php?phone=${phone}&text=${encoded}&apikey=YOUR_CALLMEBOT_KEY`);
   } catch (e) {
     console.log("[Notify User] WA send failed:", e.message);
   }
