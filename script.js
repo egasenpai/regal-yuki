@@ -636,20 +636,30 @@ async function manualCheckPayment() {
     const originalHTML = btn.innerHTML;
     
     btn.disabled = true;
-    btn.innerHTML = '⏳ Mengecek pembayaran...';
+    btn.innerHTML = '⏳ Mengecek...';
     if (warningEl) warningEl.classList.add('hidden');
 
     try {
+        console.log('[ManualCheck] Checking ref:', currentReferenceId);
         const res = await fetch(`/api/check-payment?ref=${currentReferenceId}`);
+        console.log('[ManualCheck] Response status:', res.status);
         
-        if (res.status === 404) {
-            showToast('Gagal', 'Transaksi tidak ditemukan.', 'error');
-            return;
+        let data;
+        try {
+            data = await res.json();
+        } catch (jsonErr) {
+            const text = await res.text();
+            console.error('[ManualCheck] Not JSON:', text.substring(0, 300));
+            throw new Error('Server response invalid');
+        }
+        
+        console.log('[ManualCheck] Data:', data);
+
+        if (!res.ok) {
+            throw new Error(data.error || `HTTP ${res.status}`);
         }
 
-        const data = await res.json();
-
-        // Case 1: Sudah completed di store + server sudah dibuat
+        // Case 1: Completed
         if (data.status === 'completed') {
             clearInterval(paymentCheckInterval);
             clearInterval(countdownInterval);
@@ -659,34 +669,32 @@ async function manualCheckPayment() {
             return;
         }
 
-        // Case 2: Status pending tapi Austin Pay sudah terima pembayaran
-        const paidStatuses = ['paid', 'completed', 'success', 'settlement'];
-        const isPaidOnAustin = data.austinStatus && paidStatuses.includes(data.austinStatus.toString().toLowerCase());
-        
-        if (data.status === 'pending' && isPaidOnAustin) {
-            showToast('Info', 'Pembayaran sudah kami terima! Server sedang diproses, mohon tunggu sebentar...', 'success');
-            return;
-        }
-
-        // Case 3: Processing (server sedang dibuat)
+        // Case 2: Processing
         if (data.status === 'processing') {
-            showToast('Info', 'Pembayaran diterima, server sedang dibuat. Mohon tunggu...', 'success');
+            showToast('Info', 'Pembayaran diterima, server sedang dibuat...', 'success');
             return;
         }
 
-        // Case 4: Failed
+        // Case 3: Failed
         if (data.status === 'failed') {
             showToast('Gagal', 'Terjadi kesalahan saat membuat server. Hubungi admin.', 'error');
             return;
         }
 
-        // Case 5: Belum bayar → tampilkan peringatan
+        // Case 4: Austin sudah paid tapi lokal masih pending (fallback lagi di frontend)
+        const paidStatuses = ['paid', 'completed', 'success', 'settlement'];
+        if (data.austinStatus && paidStatuses.includes(data.austinStatus.toString().toLowerCase())) {
+            showToast('Info', 'Pembayaran sudah diterima! Server sedang diproses...', 'success');
+            return;
+        }
+
+        // Case 5: Belum bayar
         if (warningEl) warningEl.classList.remove('hidden');
-        showToast('Peringatan', 'Pembayaran belum diterima. Silakan scan QRIS dan selesaikan pembayaran terlebih dahulu.', 'error');
+        showToast('Peringatan', 'Pembayaran belum diterima. Silakan scan QRIS dan bayar terlebih dahulu.', 'error');
 
     } catch (e) {
-        console.error('Manual check error:', e);
-        showToast('Error', 'Gagal mengecek status pembayaran. Coba lagi.', 'error');
+        console.error('[ManualCheck] Error:', e);
+        showToast('Error', e.message || 'Gagal mengecek status pembayaran. Coba lagi.', 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalHTML;
