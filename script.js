@@ -63,8 +63,10 @@ let vizFrameId = null;
 function cancelPayment() {
     if (paymentCheckInterval) clearInterval(paymentCheckInterval);
     if (countdownInterval) clearInterval(countdownInterval);
+    paymentCheckInterval = null;
+    countdownInterval = null;
     
-    // Kirim ke server untuk update status jadi cancelled
+    // Update status ke cancelled kalau ada ref
     if (currentReferenceId) {
         fetch('/api/cancel-payment', {
             method: 'POST',
@@ -73,12 +75,11 @@ function cancelPayment() {
         }).catch(() => {});
     }
     
-    paymentCheckInterval = null;
-    countdownInterval = null;
     currentReferenceId = null;
     closePanelModal();
-    showToast('Dibatalkan', 'Pembayaran telah dibatalkan. Silakan pesan ulang jika diperlukan.', 'error');
+    showToast('Dibatalkan', 'Pembayaran telah dibatalkan.', 'error');
 }
+
 
 // --- 5. UTILITIES ---
 function formatRupiah(price) {
@@ -509,16 +510,33 @@ async function uploadToMyCDNYuki(file) {
 
 function openPanelModal(productName, price) {
     currentPanelProduct = { name: productName, price };
+    
+    // Reset semua elemen
     document.getElementById('panel-product-name').textContent = productName;
     document.getElementById('panel-product-price').textContent = formatRupiah(price);
-    document.getElementById('panel-payment-modal').classList.add('active');
-    document.body.style.overflow = 'hidden';
+    document.getElementById('ap-qr-image').src = '';
+    document.getElementById('ap-countdown').textContent = '10:00';
+    document.getElementById('ap-countdown').classList.remove('text-red-500');
+    document.getElementById('ap-warning').classList.add('hidden');
+    document.getElementById('ap-success').classList.add('hidden');
+    document.getElementById('ap-panel-details').classList.add('hidden');
+    
+    // Tampilkan form, sembunyikan QRIS
     document.getElementById('panel-payment-form').classList.remove('hidden');
     document.getElementById('panel-qris-display').classList.add('hidden');
     document.getElementById('auto-payment-form').reset();
-    document.getElementById('ap-success').classList.add('hidden');
+    
+    // Buka modal
+    document.getElementById('panel-payment-modal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Clear interval lama
     if (paymentCheckInterval) clearInterval(paymentCheckInterval);
     if (countdownInterval) clearInterval(countdownInterval);
+    paymentCheckInterval = null;
+    countdownInterval = null;
+    currentReferenceId = null;
+    
     initIcons();
 }
 
@@ -527,6 +545,9 @@ function closePanelModal() {
     document.body.style.overflow = '';
     if (paymentCheckInterval) clearInterval(paymentCheckInterval);
     if (countdownInterval) clearInterval(countdownInterval);
+    paymentCheckInterval = null;
+    countdownInterval = null;
+    currentReferenceId = null;
 }
 
 function startCountdown(minutes) {
@@ -534,15 +555,15 @@ function startCountdown(minutes) {
     const el = document.getElementById('ap-countdown');
     if (!el) return;
     el.classList.remove('text-red-500');
-
+    
+    // Update langsung tanpa nunggu 1 detik
     const updateDisplay = () => {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         el.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
     };
-
-    updateDisplay(); // [FIX] Tampilkan langsung, gak nunggu 1 detik!
-
+    updateDisplay();
+    
     if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(() => {
         seconds--;
@@ -550,12 +571,13 @@ function startCountdown(minutes) {
             clearInterval(countdownInterval);
             el.textContent = "Expired";
             el.classList.add('text-red-500');
+            // Auto clear polling kalau expired
+            if (paymentCheckInterval) clearInterval(paymentCheckInterval);
             return;
         }
         updateDisplay();
     }, 1000);
 }
-
 
 function startPaymentPolling(referenceId) {
     currentReferenceId = referenceId;
@@ -706,7 +728,7 @@ function initAutoPaymentForm() {
         const btn = document.getElementById('ap-submit-btn');
         const originalText = btn.innerHTML;
         btn.disabled = true;
-        btn.innerHTML = '⏳ Memproses...';
+        btn.innerHTML = '<span class="flex items-center justify-center gap-2">⏳ Memproses...</span>';
 
         const payload = {
             productName: currentPanelProduct.name,
@@ -726,11 +748,23 @@ function initAutoPaymentForm() {
             const data = await res.json();
             if (!data.success) throw new Error(data.detail || data.error || 'Gagal membuat pembayaran');
 
+            // Sembunyikan form, tampilkan QRIS
             document.getElementById('panel-payment-form').classList.add('hidden');
             document.getElementById('panel-qris-display').classList.remove('hidden');
-            document.getElementById('ap-qr-image').src = data.qrImage || '';
+            
+            // Set QR image
+            const qrImg = document.getElementById('ap-qr-image');
+            if (data.qrImage) qrImg.src = data.qrImage;
+            
+            // Reset warning & success
+            document.getElementById('ap-warning').classList.add('hidden');
+            document.getElementById('ap-success').classList.add('hidden');
+            document.getElementById('ap-panel-details').classList.add('hidden');
+            
+            // Mulai countdown dan polling
             startCountdown(10);
             startPaymentPolling(data.referenceId);
+            
             showToast('QRIS Generated', 'Silakan scan QRIS untuk pembayaran', 'success');
         } catch (err) {
             showToast('Error', err.message, 'error');
