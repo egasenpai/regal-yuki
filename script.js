@@ -643,14 +643,17 @@ async function manualCheckPayment() {
         console.log('[ManualCheck] Checking ref:', currentReferenceId);
         const res = await fetch(`/api/check-payment?ref=${currentReferenceId}`);
         console.log('[ManualCheck] Response status:', res.status);
+
+        // [FIX] Clone response biar bisa dibaca ulang kalau JSON gagal
+        const resClone = res.clone();
         
         let data;
         try {
             data = await res.json();
         } catch (jsonErr) {
-            const text = await res.text();
+            const text = await resClone.text();
             console.error('[ManualCheck] Not JSON:', text.substring(0, 300));
-            throw new Error('Server response invalid');
+            throw new Error('Server response invalid: ' + text.substring(0, 100));
         }
         
         console.log('[ManualCheck] Data:', data);
@@ -659,7 +662,7 @@ async function manualCheckPayment() {
             throw new Error(data.error || `HTTP ${res.status}`);
         }
 
-        // Case 1: Completed
+        // ... sisanya sama seperti sebelumnya ...
         if (data.status === 'completed') {
             clearInterval(paymentCheckInterval);
             clearInterval(countdownInterval);
@@ -669,26 +672,22 @@ async function manualCheckPayment() {
             return;
         }
 
-        // Case 2: Processing
         if (data.status === 'processing') {
             showToast('Info', 'Pembayaran diterima, server sedang dibuat...', 'success');
             return;
         }
 
-        // Case 3: Failed
         if (data.status === 'failed') {
             showToast('Gagal', 'Terjadi kesalahan saat membuat server. Hubungi admin.', 'error');
             return;
         }
 
-        // Case 4: Austin sudah paid tapi lokal masih pending (fallback lagi di frontend)
         const paidStatuses = ['paid', 'completed', 'success', 'settlement'];
         if (data.austinStatus && paidStatuses.includes(data.austinStatus.toString().toLowerCase())) {
             showToast('Info', 'Pembayaran sudah diterima! Server sedang diproses...', 'success');
             return;
         }
 
-        // Case 5: Belum bayar
         if (warningEl) warningEl.classList.remove('hidden');
         showToast('Peringatan', 'Pembayaran belum diterima. Silakan scan QRIS dan bayar terlebih dahulu.', 'error');
 
