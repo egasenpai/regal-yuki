@@ -9,7 +9,7 @@ const REPO = "yuki-regal";
 export async function readJsonFile(path) {
   try {
     if (!TOKEN) {
-      console.error("[GitHub Store] REGAL_GITHUB_TOKEN is missing!");
+      console.error("[GitHub Store] REGAL_TOKEN is missing!");
       return { content: null, sha: null };
     }
     
@@ -45,7 +45,7 @@ export async function readJsonFile(path) {
 export async function writeJsonFile(path, content, sha, message) {
   try {
     if (!TOKEN) {
-      console.error("[GitHub Store] REGAL_GITHUB_TOKEN is missing!");
+      console.error("[GitHub Store] REGAL_TOKEN is missing!");
       return false;
     }
     
