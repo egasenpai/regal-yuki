@@ -16,11 +16,10 @@ export default async function handler(req, res) {
     if (!txn) return res.status(404).json({ error: "Transaction not found" });
 
     if (txn.status === "completed") {
-      return res.status(400).json({ error: "Transaction already completed, cannot cancel" });
+      return res.status(400).json({ error: "Transaction already completed" });
     }
 
     await updateTransactionStatus(ref, "cancelled", { cancelledAt: new Date().toISOString() });
-
     return res.status(200).json({ success: true, message: "Transaction cancelled" });
   } catch (error) {
     console.error("[Cancel] Error:", error);
