@@ -60,6 +60,26 @@ let source = null;
 let dataArray = null;
 let vizFrameId = null;
 
+function cancelPayment() {
+    if (paymentCheckInterval) clearInterval(paymentCheckInterval);
+    if (countdownInterval) clearInterval(countdownInterval);
+    
+    // Kirim ke server untuk update status jadi cancelled
+    if (currentReferenceId) {
+        fetch('/api/cancel-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ref: currentReferenceId })
+        }).catch(() => {});
+    }
+    
+    paymentCheckInterval = null;
+    countdownInterval = null;
+    currentReferenceId = null;
+    closePanelModal();
+    showToast('Dibatalkan', 'Pembayaran telah dibatalkan. Silakan pesan ulang jika diperlukan.', 'error');
+}
+
 // --- 5. UTILITIES ---
 function formatRupiah(price) {
     return 'Rp ' + price.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -512,7 +532,18 @@ function closePanelModal() {
 function startCountdown(minutes) {
     let seconds = minutes * 60;
     const el = document.getElementById('ap-countdown');
+    if (!el) return;
     el.classList.remove('text-red-500');
+
+    const updateDisplay = () => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        el.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+    };
+
+    updateDisplay(); // [FIX] Tampilkan langsung, gak nunggu 1 detik!
+
+    if (countdownInterval) clearInterval(countdownInterval);
     countdownInterval = setInterval(() => {
         seconds--;
         if (seconds <= 0) {
@@ -521,11 +552,10 @@ function startCountdown(minutes) {
             el.classList.add('text-red-500');
             return;
         }
-        const m = Math.floor(seconds / 60);
-        const s = seconds % 60;
-        el.textContent = `${m}:${s < 10 ? '0' : ''}${s}`;
+        updateDisplay();
     }, 1000);
 }
+
 
 function startPaymentPolling(referenceId) {
     currentReferenceId = referenceId;
@@ -607,9 +637,9 @@ async function manualCheckPayment() {
             return;
         }
 
-        // Case 2: Status pending tapi Austin Pay sudah terima pembayaran (webhook belum datang)
+        // Case 2: Status pending tapi Austin Pay sudah terima pembayaran
         const paidStatuses = ['paid', 'completed', 'success', 'settlement'];
-        const isPaidOnAustin = data.austinStatus && paidStatuses.includes(data.austinStatus.toLowerCase());
+        const isPaidOnAustin = data.austinStatus && paidStatuses.includes(data.austinStatus.toString().toLowerCase());
         
         if (data.status === 'pending' && isPaidOnAustin) {
             showToast('Info', 'Pembayaran sudah kami terima! Server sedang diproses, mohon tunggu sebentar...', 'success');
@@ -622,7 +652,13 @@ async function manualCheckPayment() {
             return;
         }
 
-        // Case 4: Belum bayar → tampilkan peringatan
+        // Case 4: Failed
+        if (data.status === 'failed') {
+            showToast('Gagal', 'Terjadi kesalahan saat membuat server. Hubungi admin.', 'error');
+            return;
+        }
+
+        // Case 5: Belum bayar → tampilkan peringatan
         if (warningEl) warningEl.classList.remove('hidden');
         showToast('Peringatan', 'Pembayaran belum diterima. Silakan scan QRIS dan selesaikan pembayaran terlebih dahulu.', 'error');
 
