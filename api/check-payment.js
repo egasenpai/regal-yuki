@@ -3,8 +3,9 @@
  * Cek dari GitHub store + Austin Pay (GET /deposit/check/:id)
  */
 
-import { findTransaction } from "./_lib/github-store.js";
+import { findTransaction, readJsonFile, updateTransactionStatus } from "./_lib/github-store.js";
 import { austinFetchSigned } from "./_lib/austin-fetch.js";
+import { createServer } from "./_lib/pterodactyl.js";
 
 const AUSTIN_API_KEY = "apg_live_7b2866c45bfe752cc6a51a5c719087e121bf26430377ce46";
 const AUSTIN_API_SECRET = "aps_68b377e6d57c7096a31b110d7b0862d059eae4c4155dcb2f61bef3449c2d3ed2";
@@ -24,6 +25,8 @@ export default async function handler(req, res) {
   if (!txn) return res.status(404).json({ error: "Transaction not found" });
 
   let austinStatus = null;
+  let serverInfo = txn.serverInfo || null;
+
   if (txn.status === "pending" && txn.austinTxId) {
     try {
       const checkPath = `/api/v2/deposit/check/${txn.austinTxId}`;
@@ -37,13 +40,52 @@ export default async function handler(req, res) {
       if (checkRes.ok) {
         const checkData = await checkRes.json();
         austinStatus = checkData.data?.status || checkData.status || null;
+        console.log(`[Check] Austin status for ${ref}: ${austinStatus}`);
+
+        // [FIX] FALLBACK: Kalau Austin sudah terima duit tapi lokal masih pending, proses sekarang!
+        const paidStatuses = ['paid', 'completed', 'success', 'settlement', 'done'];
+        if (austinStatus && paidStatuses.includes(austinStatus.toString().toLowerCase())) {
+          console.log(`[Check] Austin sudah paid tapi lokal pending. Memproses server...`);
+
+          // Re-read file biar gak bentrok sama webhook yang mungkin juga lagi jalan
+          const { content, sha } = await readJsonFile("transactions/pending.json");
+          const freshTxn = content?.find(t => t.referenceId === ref || t.id === ref || t.austinTxId === ref);
+
+          if (freshTxn && freshTxn.status === "pending") {
+            await updateTransactionStatus(ref, "processing", { austinStatus, paidAt: new Date().toISOString() });
+            try {
+              const newServerInfo = await createServer({
+                username: freshTxn.panelUsername,
+                email: freshTxn.panelEmail,
+                productName: freshTxn.productName
+              });
+              await updateTransactionStatus(ref, "completed", {
+                serverInfo: newServerInfo,
+                austinStatus,
+                austinAmount: freshTxn.price,
+                paidAt: new Date().toISOString()
+              });
+              serverInfo = newServerInfo;
+              txn.status = "completed";
+              console.log(`[Check] Server berhasil dibuat via fallback: ${newServerInfo.serverId}`);
+            } catch (ptErr) {
+              console.error("[Check] Fallback create server failed:", ptErr.message);
+              await updateTransactionStatus(ref, "failed", { error: ptErr.message, austinStatus });
+              txn.status = "failed";
+            }
+          } else if (freshTxn) {
+            // Webhook sudah memproses sebelumnya
+            txn.status = freshTxn.status;
+            serverInfo = freshTxn.serverInfo || null;
+          }
+        }
       }
     } catch (e) {
       console.log("[Check] Austin Pay check failed:", e.message);
     }
   }
 
-    return res.status(200).json({
+  return res.status(200).json({
     success: true,
     status: txn.status,
     austinStatus,
@@ -53,6 +95,6 @@ export default async function handler(req, res) {
     buyerWa: txn.buyerWa,
     panelUsername: txn.panelUsername,
     panelEmail: txn.panelEmail,
-    serverInfo: txn.serverInfo || null
+    serverInfo: serverInfo
   });
 }
