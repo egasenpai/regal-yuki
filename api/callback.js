@@ -1,6 +1,7 @@
 /**
  * API: Webhook Callback dari Austin Pay
  * Event: deposit.paid
+ * FIXED: Cek merchant_ref, ref_id, event lebih longgar, signature aman
  */
 
 import crypto from "crypto";
@@ -56,10 +57,13 @@ export default async function handler(req, res) {
         .digest("hex");
 
       try {
-        const isValid = crypto.timingSafeEqual(
-          Buffer.from(signature, "hex"),
-          Buffer.from(expected, "hex")
-        );
+        const sigBuf = Buffer.from(signature, "hex");
+        const expBuf = Buffer.from(expected, "hex");
+        if (sigBuf.length !== expBuf.length) {
+          console.error("[Webhook] Invalid signature length!");
+          return res.status(401).json({ error: "Invalid signature" });
+        }
+        const isValid = crypto.timingSafeEqual(sigBuf, expBuf);
         if (!isValid) {
           console.error("[Webhook] Invalid signature!");
           return res.status(401).json({ error: "Invalid signature" });
@@ -87,7 +91,7 @@ export default async function handler(req, res) {
 
     console.log(`[Webhook] Event=${event}, TX=${transactionId}, status=${status}, amount=${amount}`);
 
-    // [FIX] Proses kalau event deposit.paid ATAU status-nya paid/completed
+    // [FIX] Proses kalau event deposit.paid ATAU status-nya paid/completed/success/settlement
     const isPaidEvent = event === "deposit.paid" || event === "deposit_paid";
     const isPaidStatus = status === "paid" || status === "completed" || status === "success" || status === "settlement";
 
@@ -149,29 +153,55 @@ async function notifyAdmin(txn, serverInfo, errorMsg = null) {
   let text = "";
 
   if (errorMsg) {
-    text = `🚨 *GAGAL CREATE SERVER* 🚨\n\n` +
-           `Ref: ${txn.referenceId}\n` +
-           `Austin TX: ${txn.austinTxId || '-'}\n` +
-           `Produk: ${txn.productName}\n` +
-           `User: ${txn.buyerName} (${txn.buyerWa})\n` +
-           `Panel User: ${txn.panelUsername}\n` +
-           `Error: ${errorMsg}\n\n` +
+    text = `🚨 *GAGAL CREATE SERVER* 🚨
+
+` +
+           `Ref: ${txn.referenceId}
+` +
+           `Austin TX: ${txn.austinTxId || '-'}
+` +
+           `Produk: ${txn.productName}
+` +
+           `User: ${txn.buyerName} (${txn.buyerWa})
+` +
+           `Panel User: ${txn.panelUsername}
+` +
+           `Error: ${errorMsg}
+
+` +
            `Mohon create manual ya!`;
   } else {
-    text = `✅ *PEMBAYARAN SUKSES & SERVER DIBUAT* ✅\n\n` +
-           `Ref: ${txn.referenceId}\n` +
-           `Austin TX: ${txn.austinTxId || '-'}\n` +
-           `Produk: ${txn.productName}\n` +
-           `Harga: Rp ${txn.price.toLocaleString('id-ID')}\n\n` +
-           `👤 *Pembeli:*\n` +
-           `Nama: ${txn.buyerName}\n` +
-           `WA: ${txn.buyerWa}\n` +
-           `Username Panel: ${txn.panelUsername}\n` +
-           `Email: ${txn.panelEmail}\n\n` +
-           `🖥️ *Server Info:*\n` +
-           `Server ID: ${serverInfo.serverId}\n` +
-           `Panel URL: ${serverInfo.panelUrl}\n` +
-           `Login: ${serverInfo.username}\n` +
+    text = `✅ *PEMBAYARAN SUKSES & SERVER DIBUAT* ✅
+
+` +
+           `Ref: ${txn.referenceId}
+` +
+           `Austin TX: ${txn.austinTxId || '-'}
+` +
+           `Produk: ${txn.productName}
+` +
+           `Harga: Rp ${txn.price.toLocaleString('id-ID')}
+
+` +
+           `👤 *Pembeli:*
+` +
+           `Nama: ${txn.buyerName}
+` +
+           `WA: ${txn.buyerWa}
+` +
+           `Username Panel: ${txn.panelUsername}
+` +
+           `Email: ${txn.panelEmail}
+
+` +
+           `🖥️ *Server Info:*
+` +
+           `Server ID: ${serverInfo.serverId}
+` +
+           `Panel URL: ${serverInfo.panelUrl}
+` +
+           `Login: ${serverInfo.username}
+` +
            `Password: ${serverInfo.password}`;
   }
 
@@ -185,13 +215,23 @@ async function notifyAdmin(txn, serverInfo, errorMsg = null) {
 
 async function notifyUser(txn, serverInfo) {
   const phone = txn.buyerWa.replace(/^0/, "62").replace(/\D/g, "");
-  const text = `🎉 *Pembayaran Berhasil!* 🎉\n\n` +
-               `Terima kasih ${txn.buyerName} telah membeli *${txn.productName}* di Yuki Store.\n\n` +
-               `🖥️ *Detail Panel Anda:*\n` +
-               `🔗 Panel: ${serverInfo.panelUrl}\n` +
-               `👤 Username: ${serverInfo.username}\n` +
-               `🔑 Password: ${serverInfo.password}\n\n` +
-               `Silakan login dan ganti password Anda.\n` +
+  const text = `🎉 *Pembayaran Berhasil!* 🎉
+
+` +
+               `Terima kasih ${txn.buyerName} telah membeli *${txn.productName}* di Yuki Store.
+
+` +
+               `🖥️ *Detail Panel Anda:*
+` +
+               `🔗 Panel: ${serverInfo.panelUrl}
+` +
+               `👤 Username: ${serverInfo.username}
+` +
+               `🔑 Password: ${serverInfo.password}
+
+` +
+               `Silakan login dan ganti password Anda.
+` +
                `Jika ada kendala, hubungi admin Yuki Store.`;
 
   const encoded = encodeURIComponent(text);
