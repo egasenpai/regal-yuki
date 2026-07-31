@@ -1,0 +1,14 @@
+{
+  "rewrites": [
+    {
+      "source": "/:filename.jpg",
+      "destination": "https://raw.githubusercontent.com/egasenpai/yuki-regal/main/:filename.jpg"
+    },
+    {
+      "source": "/:filename.png",
+      "destination": "https://raw.githubusercontent.com/egasenpai/yuki-regal/main/:filename.png"
+    }
+  ]
+}
+
+
